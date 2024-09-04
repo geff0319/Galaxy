@@ -1,0 +1,380 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { ref, computed, onActivated } from 'vue'
+
+import { ProxyGroupType } from '@/constant'
+import { ignoredError, sleep } from '@/utils'
+import { useMessage, usePrompt } from '@/hooks'
+import { useAppSettingsStore, useKernelApiStore } from '@/stores'
+import {
+  useProxy,
+  getGroupDelay,
+  getConnections,
+  deleteConnection,
+  getProxyDelay
+} from '@/api/kernel'
+
+const expandedSet = ref<Set<string>>(new Set())
+const loadingSet = ref<Set<string>>(new Set())
+const loading = ref(false)
+
+const { t } = useI18n()
+const { message } = useMessage()
+const { prompt } = usePrompt()
+const appSettings = useAppSettingsStore()
+const kernelApiStore = useKernelApiStore()
+
+const groups = computed(() => {
+  const { providers, proxies } = kernelApiStore
+  if (!providers.default) return []
+  return providers.default.proxies
+    .concat([proxies.GLOBAL])
+    .filter((v) => v.all)
+    .map((group) => {
+      const all = group.all
+        .filter((proxy) => {
+          return (
+            appSettings.app.kernel.unAvailable ||
+            ['DIRECT', 'REJECT'].includes(proxy) ||
+            proxies[proxy].all ||
+            proxies[proxy].alive
+          )
+        })
+        .map((proxy) => {
+          const history = proxies[proxy].history || []
+          const delay = history[history.length - 1]?.delay || 0
+          return { ...proxies[proxy], delay }
+        })
+        .sort((a, b) => {
+          if (!appSettings.app.kernel.sortByDelay || a.delay === b.delay) return 0
+          if (!a.delay) return 1
+          if (!b.delay) return -1
+          return a.delay - b.delay
+        })
+
+      const chains = [group.now]
+      let tmp = proxies[group.now]
+      while (tmp) {
+        tmp.now && chains.push(tmp.now)
+        tmp = proxies[tmp.now]
+      }
+
+      return { ...group, all, chains }
+    })
+})
+
+const handleUseProxy = async (group: any, proxy: any) => {
+  if (group.type !== 'Selector') return
+
+  if (group.now === proxy.name) return
+
+  const promises: Promise<null>[] = []
+
+  if (appSettings.app.kernel.autoClose) {
+    const { connections } = await getConnections()
+    promises.push(
+      ...(connections || [])
+        .filter((v) => v.chains.includes(group.name))
+        .map((v) => deleteConnection(v.id))
+    )
+  }
+
+  try {
+    await useProxy(group.name, proxy.name)
+    await Promise.all(promises)
+    await kernelApiStore.refreshProviderProxies()
+  } catch (error: any) {
+    message.error(error)
+  }
+}
+
+const toggleExpanded = (group: string) => {
+  if (expandedSet.value.has(group)) {
+    expandedSet.value.delete(group)
+  } else {
+    expandedSet.value.add(group)
+  }
+}
+
+const expandAll = () => groups.value.forEach(({ name }) => expandedSet.value.add(name))
+
+const collapseAll = () => expandedSet.value.clear()
+
+const isExpanded = (group: string) => expandedSet.value.has(group)
+
+const isLoading = (group: string) => loadingSet.value.has(group)
+
+const handleGroupDelay = async (group: string) => {
+  loadingSet.value.add(group)
+  try {
+    await getGroupDelay(
+      group,
+      appSettings.app.kernel.testUrl || 'https://www.gstatic.com/generate_204'
+    )
+    await kernelApiStore.refreshProviderProxies()
+  } catch (error: any) {
+    message.error(error)
+  }
+  loadingSet.value.delete(group)
+}
+
+const handleProxyDelay = async (proxy: string) => {
+  try {
+    const { delay } = await getProxyDelay(
+      proxy,
+      appSettings.app.kernel.testUrl || 'https://www.gstatic.com/generate_204'
+    )
+    const _proxy = kernelApiStore.proxies[proxy]
+    _proxy.history.push({ delay })
+  } catch (error: any) {
+    message.error(error)
+  }
+}
+
+const handleRefresh = async () => {
+  loading.value = true
+  await ignoredError(kernelApiStore.refreshConfig)
+  await ignoredError(kernelApiStore.refreshProviderProxies)
+  await sleep(500)
+  loading.value = false
+}
+
+const handleChangeTestUrl = async () => {
+  try {
+    const url = await prompt<string>(
+      'home.controller.delayUrl',
+      appSettings.app.kernel.testUrl || 'https://www.gstatic.com/generate_204',
+      {
+        placeholder: 'https://www.gstatic.com/generate_204'
+      }
+    )
+    appSettings.app.kernel.testUrl = url
+    message.success('common.success')
+  } catch (error: any) {
+    message.info(error)
+  }
+}
+
+const locateGroup = (group: any, chain: string) => {
+  collapseAll()
+  if (kernelApiStore.proxies[chain].all) {
+    toggleExpanded(kernelApiStore.proxies[chain].name)
+  } else {
+    toggleExpanded(group.name)
+  }
+}
+
+const delayColor = (delay = 0) => {
+  if (delay === 0) return 'var(--level-0-color)'
+  if (delay < 200) return 'var(--level-1-color)'
+  if (delay < 500) return 'var(--level-2-color)'
+  if (delay < 1200) return 'var(--level-3-color)'
+  return 'var(--level-4-color)'
+}
+
+onActivated(() => {
+  kernelApiStore.refreshProviderProxies()
+})
+</script>
+
+<template>
+  <div class="groups" style="margin-top: 0">
+    <div class="header">
+      <Switch v-model="appSettings.app.kernel.autoClose">
+        {{ t('home.controller.autoClose') }}
+      </Switch>
+      <Switch v-model="appSettings.app.kernel.unAvailable" class="ml-8">
+        {{ t('home.controller.unAvailable') }}
+      </Switch>
+      <Switch v-model="appSettings.app.kernel.cardMode" class="ml-8">
+        {{ t('home.controller.cardMode') }}
+      </Switch>
+      <Switch v-model="appSettings.app.kernel.sortByDelay" class="ml-8">
+        {{ t('home.controller.sortBy') }}
+      </Switch>
+      <Button @click="handleChangeTestUrl" type="primary" size="small" class="ml-8">
+        {{ t('home.controller.delay') }}
+      </Button>
+      <Button @click="expandAll" v-tips="'home.overview.expandAll'" type="text" class="ml-auto">
+        <Icon icon="expand" />
+      </Button>
+      <Button @click="collapseAll" v-tips="'home.overview.collapseAll'" type="text">
+        <Icon icon="collapse" />
+      </Button>
+      <Button
+        @click="handleRefresh"
+        v-tips="'home.overview.refresh'"
+        :loading="loading"
+        type="text"
+      >
+        <Icon icon="refresh" />
+      </Button>
+    </div>
+  </div>
+  <div v-for="group in groups" :key="group.name" class="groups">
+    <div class="header">
+      <div class="group-info">
+        <span class="group-name">{{ group.name }}</span>
+        <span class="group-type">
+          {{
+            t(
+              {
+                [ProxyGroupType.Selector]: 'kernel.proxyGroups.type.Selector',
+                [ProxyGroupType.UrlTest]: 'kernel.proxyGroups.type.UrlTest',
+                [ProxyGroupType.Fallback]: 'kernel.proxyGroups.type.Fallback',
+                [ProxyGroupType.Relay]: 'kernel.proxyGroups.type.Relay',
+                [ProxyGroupType.LoadBalance]: 'kernel.proxyGroups.type.LoadBalance'
+              }[group.type]!
+            )
+          }}
+        </span>
+        <span> :: </span>
+        <template v-for="(chain, index) in group.chains" :key="chain">
+          <span v-if="index !== 0" style="color: gray"> / </span>
+          <Button @click="locateGroup(group, chain)" type="text" size="small">{{ chain }}</Button>
+        </template>
+      </div>
+      <div class="action">
+        <Button
+          @click="handleGroupDelay(group.name)"
+          v-tips="'home.overview.delayTest'"
+          :loading="isLoading(group.name)"
+          type="text"
+        >
+          <Icon icon="speedTest" />
+        </Button>
+        <Button @click="toggleExpanded(group.name)" type="text">
+          <Icon
+            :class="{ 'rotate-z': isExpanded(group.name) }"
+            icon="arrowDown"
+            class="action-expand"
+          />
+        </Button>
+      </div>
+    </div>
+    <Transition name="expand">
+      <div v-if="isExpanded(group.name)" class="body">
+        <template v-if="appSettings.app.kernel.cardMode">
+          <Card
+            v-for="proxy in group.all"
+            :title="proxy.name"
+            :selected="proxy.name === group.now"
+            :key="proxy.name"
+            @click="handleUseProxy(group, proxy)"
+            class="proxy"
+          >
+            <Button
+              @click.stop="handleProxyDelay(proxy.name)"
+              :style="{ color: delayColor(proxy.delay) }"
+              type="text"
+              class="delay"
+            >
+              {{ proxy.delay && proxy.delay + 'ms' }}
+            </Button>
+            <div class="type">{{ proxy.type }} {{ proxy.udp ? ':: udp' : '' }}</div>
+          </Card>
+        </template>
+        <template v-else>
+          <div
+            v-for="proxy in group.all"
+            v-tips.fast="proxy.name"
+            @click="handleUseProxy(group, proxy)"
+            :key="proxy.name"
+            :style="{ background: delayColor(proxy.delay) }"
+            :class="{ selected: proxy.name === group.now }"
+            class="proxy-square"
+          ></div>
+        </template>
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<style lang="less" scoped>
+.expand-enter-active,
+.expand-leave-active {
+  transform-origin: top;
+  transition:
+    transform 0.2s ease-in-out,
+    opacity 0.2s ease-in-out;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  transform: scaleY(0);
+}
+
+.groups {
+  margin: 8px;
+
+  .header {
+    position: sticky;
+    z-index: 99;
+    top: 0;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    backdrop-filter: blur(2px);
+    .group-info {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      .group-name {
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .group-type {
+        margin: 0 8px;
+      }
+    }
+
+    .action {
+      margin-left: auto;
+
+      .rotate-z {
+        transform: rotateZ(0deg);
+      }
+      &-expand {
+        transform: rotateZ(-90deg);
+        transition: all 0.2s;
+      }
+    }
+  }
+
+  .body {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    .proxy {
+      cursor: pointer;
+      width: calc(20% - 8px);
+      margin: 4px 4px;
+      .delay {
+        height: 20px;
+        margin-left: -4px;
+        padding-left: 4px;
+      }
+      .type,
+      .delay {
+        font-size: 12px;
+      }
+    }
+
+    .proxy-square {
+      width: 12px;
+      height: 12px;
+      margin: 4px;
+      border-radius: 4px;
+    }
+
+    .selected {
+      border-radius: 12px;
+      border: 2px solid var(--primary-color);
+      box-shadow: 0 0 4px var(--secondary-color);
+    }
+  }
+}
+</style>
