@@ -3,8 +3,8 @@ name: Build Galaxy
 on:
   push:
     tags:
-      - "*"
-
+      - "v*"
+  workflow_dispatch:
 jobs:
   Build:
     permissions: write-all
