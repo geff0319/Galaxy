@@ -108,7 +108,7 @@ export namespace bridge {
 		    if (!a) {
 		        return a;
 		    }
-		    if (a.slice) {
+		    if (a.slice && a.map) {
 		        return (a as any[]).map(elem => this.convertValues(elem, classs));
 		    } else if ("object" === typeof a) {
 		        if (asMap) {
@@ -136,6 +136,23 @@ export namespace bridge {
 	        this.icon = source["icon"];
 	        this.title = source["title"];
 	        this.tooltip = source["tooltip"];
+	    }
+	}
+
+}
+
+export namespace options {
+	
+	export class SecondInstanceData {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new SecondInstanceData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
 	    }
 	}
 

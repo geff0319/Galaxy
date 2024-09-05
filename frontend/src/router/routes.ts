@@ -59,6 +59,23 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/translation',
+    name: 'Translation',
+    component: TranslationView,
+    meta: {
+      name: 'router.translation'
+    }
+  },
+  {
+    path: '/ytdlp',
+    name: 'Ytdlp',
+    component: YtdlpView,
+    meta: {
+      name: '下载',
+      keepAlive:false
+    }
+  },
+  {
     path: '/scheduledtasks',
     name: 'ScheduledTasksView',
     component: ScheduledTasksView,
@@ -81,23 +98,6 @@ const routes: RouteRecordRaw[] = [
     meta: {
       name: 'Playground',
       hidden: !isDev
-    }
-  },
-  {
-    path: '/translation',
-    name: 'Translation',
-    component: TranslationView,
-    meta: {
-      name: 'router.translation'
-    }
-  },
-  {
-    path: '/ytdlp',
-    name: 'Ytdlp',
-    component: YtdlpView,
-    meta: {
-      name: '下载',
-      keepAlive:false
     }
   }
 ]
