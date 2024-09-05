@@ -1,1 +1,3 @@
 2024-09-04T15:46:39.525+0800	ERROR	ytdlp/memory_db.go:106	[EOF]
+2024-09-04T17:52:13.046+0800	ERROR	ytdlp/memory_db.go:106	[EOF]
+2024-09-04T18:09:22.316+0800	ERROR	bridge/ws.go:102	[gefeifan获取WS内容报错：failed to get reader: use of closed network connection]

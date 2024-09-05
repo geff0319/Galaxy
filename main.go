@@ -58,7 +58,7 @@ func main() {
 			WindowIsTranslucent:  false,
 			About: &mac.AboutInfo{
 				Title:   "Galaxy",
-				Message: "© 2024 GUI.for.Cores",
+				Message: "© 2024 Galaxy",
 				Icon:    icon,
 			},
 		},
