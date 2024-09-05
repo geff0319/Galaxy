@@ -1,4 +1,4 @@
-name: Build Galaxy
+name: Galaxy
 
 on:
   push:
@@ -26,10 +26,10 @@ jobs:
           #   GOARCH: amd64
           # - os: macos-latest
           #   GOOS: darwin
-          #  GOARCH: arm64
-          #- os: ubuntu-latest
-          #  GOOS: linux
-          #  GOARCH: amd64
+          #   GOARCH: arm64
+          # - os: ubuntu-latest
+          #   GOOS: linux
+          #   GOARCH: amd64
           # - os: ubuntu-latest
           #   GOOS: linux
           #   GOARCH: arm64
@@ -60,12 +60,14 @@ jobs:
         run: |
           cd frontend && pnpm install
           go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
       # Dependencies: GNU/Linux
       - name: Update system and dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
       - name: Build Frontend
         run: cd frontend && pnpm build
 
@@ -83,12 +85,14 @@ jobs:
           cd ./build/bin
           # The compiled product name of macos is always "${{ env.APP_NAME }}.app"
           zip -q -r ${{ env.ZIP_FILE }} ${{ env.APP_NAME }}.app
+
       # Compress: Windows
       - name: Create a compressed file for Windows
         if: runner.os == 'Windows'
         run: |
           cd ./build/bin
           Compress-Archive -Path ${{ env.APP_NAME }}.exe -DestinationPath ${{ env.ZIP_FILE }}
+
       # Compress: GNU/Linux
       - name: Create a compressed file for GNU/Linux
         if: runner.os == 'Linux'
@@ -96,6 +100,7 @@ jobs:
           cd ./build/bin
           mv ${{ env.APP_NAME }}.exe ${{ env.APP_NAME }}
           zip ${{ env.ZIP_FILE }} ${{ env.APP_NAME }}
+
       # Artifact
       # - name: Upload Artifact ${{ env.ZIP_FILE }}
       #   uses: actions/upload-artifact@v3
