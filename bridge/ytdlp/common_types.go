@@ -79,6 +79,7 @@ type ProcessResponse struct {
 	Info     DownloadInfo     `json:"info"`
 	Output   DownloadOutput   `json:"output"`
 	Params   []string         `json:"params"`
+	//BiliMeta *website.BiliMetadata `json:"biliMeta"`
 }
 
 // struct representing the current status of the memoryDB
@@ -113,6 +114,9 @@ type CustomTemplate struct {
 	Content string `json:"content"`
 }
 
+type YtDlpCookie struct {
+	Bilibili string `yaml:"bilibili"`
+}
 type YtDlpConfig struct {
 	BasePath     string
 	DownloadPath string        `yaml:"downloadPath"` //视频保存路径
@@ -120,6 +124,7 @@ type YtDlpConfig struct {
 	QueueSize    int           `yaml:"queueSize"`
 	Mdb          *MemoryDB     `yaml:"-"`
 	Mq           *MessageQueue `yaml:"-"`
+	Cookies      YtDlpCookie   `yaml:"cookies"`
 }
 
 var YdpConfig YtDlpConfig
@@ -132,6 +137,7 @@ func InitYtDlpConfig(basePath string) {
 		YtDlpPath:    basePath + "/data/yt-dlp/yt-dlp.exe",
 		QueueSize:    8,
 		Mdb:          &mdb,
+		Cookies:      YtDlpCookie{},
 	}
 	b, err := os.ReadFile(basePath + "/data/ytdlp.yaml")
 	if os.IsNotExist(err) {
@@ -151,7 +157,8 @@ func InitYtDlpConfig(basePath string) {
 
 	mq, err := NewMessageQueue()
 	if err != nil {
-		panic(err)
+		gefflog.Err("初始化下载消息队列失败：" + err.Error())
+		return
 	}
 	YdpConfig.Mq = mq
 	YdpConfig.Mq.SetupConsumers()

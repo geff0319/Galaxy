@@ -6,14 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"galaxy/bridge/website"
 	"github.com/ge-fei-fan/gefflog"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -32,6 +35,7 @@ const (
 	StatusDownloading
 	StatusCompleted
 	StatusErrored
+	StatusMergeing
 )
 
 // Process descriptor
@@ -43,6 +47,7 @@ type Process struct {
 	Progress DownloadProgress `json:"progress"`
 	Output   DownloadOutput   `json:"output"`
 	proc     *os.Process
+	BiliMeta *website.BiliMetadata `json:"biliMeta"`
 	//Logger   *slog.Logger
 }
 
@@ -78,10 +83,55 @@ func (p *Process) Start() {
 	//
 	//buildFilename(&p.Output)
 
+	// 下载Thumbnail
+	//go p.SetThumbnail()
 	//TODO: it spawn another one ytdlp process, too slow.
 	//go p.GetFileName(&out)
 	p.Output.SavedFilePath = filepath.Join(YdpConfig.DownloadPath, p.Info.FileName)
-	gefflog.Info(p.Info.FileName)
+	// bilibii下载
+	if strings.Contains(p.Url, "bilibili") {
+		if p.BiliMeta == nil {
+			err := p.SetMetadata()
+			if err != nil {
+				gefflog.Err(fmt.Sprintf("failed to Download bilibili process: err=%s", err.Error()))
+				YdpConfig.Mq.eventBus.Publish("notify", "error", "下载bilibili视频失败"+err.Error())
+				return
+			}
+		}
+
+		p.BiliMeta.SavedFilePath = p.Output.SavedFilePath
+		p.BiliMeta.WriteFn = func(percentage string, speed float32) {
+			if percentage == "100" {
+				p.Progress = DownloadProgress{
+					Status:     StatusMergeing,
+					Percentage: percentage,
+					Speed:      speed,
+					ETA:        0,
+				}
+			} else {
+				p.Progress = DownloadProgress{
+					Status:     StatusDownloading,
+					Percentage: percentage,
+					Speed:      speed,
+					ETA:        0,
+				}
+			}
+		}
+		err := p.BiliMeta.Download(YdpConfig.BasePath)
+		defer func() {
+			p.BiliMeta.DoneChan <- struct{}{}
+			close(p.BiliMeta.DoneChan)
+			p.Complete()
+		}()
+		if err != nil {
+			gefflog.Err(fmt.Sprintf("failed to Download bilibili process: err=%s", err.Error()))
+			YdpConfig.Mq.eventBus.Publish("notify", "error", "下载bilibili视频失败"+err.Error())
+			return
+		}
+
+		return
+	}
+
 	baseParams := []string{
 		strings.Split(p.Url, "?list")[0], //no playlist
 		"--newline",
@@ -104,10 +154,11 @@ func (p *Process) Start() {
 	}
 
 	params := append(baseParams, p.Params...)
-	gefflog.Info(params)
+	gefflog.Info(fmt.Sprintf("执行参数%s", params))
 
 	// ----------------- main block ----------------- //
 	if !IsYtDlpExist() {
+		gefflog.Err("failed to start ytdlp process: err=ytdlp程序不存在")
 		YdpConfig.Mq.eventBus.Publish("notify", "error", "启动任务失败:ytdlp程序不存在,请下载")
 		p.Progress.Status = StatusErrored
 		return
@@ -198,9 +249,23 @@ func (p *Process) Complete() {
 
 // Kill a process and remove it from the memory
 func (p *Process) Kill() error {
+
 	defer func() {
 		p.Progress.Status = StatusCompleted
 	}()
+	if strings.Contains(p.Url, "bilibili") {
+		if p.BiliMeta == nil {
+			gefflog.Err(fmt.Sprintf("failed to stop bilibili process: err=bilibil视频信息不存在"))
+			return errors.New("停止任务失败,bilibil视频信息不存在")
+		}
+
+		defer func() {
+			p.BiliMeta.DoneChan <- struct{}{}
+			close(p.BiliMeta.DoneChan)
+		}()
+		p.BiliMeta.Cl()
+		return nil
+	}
 	// ytdlp uses multiple child process the parent process
 	// has been spawned with setPgid = true. To properly kill
 	// all subprocesses a SIGTERM need to be sent to the correct
@@ -209,13 +274,6 @@ func (p *Process) Kill() error {
 		return errors.New("*os.Process not set")
 	}
 	p.proc.Kill()
-	//process, err := os.FindProcess(p.proc.Pid)
-	//if err != nil {
-	//	return err
-	//}
-	//if err = process.Signal(syscall.SIGKILL); err != nil {
-	//	return err
-	//}
 
 	return nil
 }
@@ -304,6 +362,30 @@ func (p *Process) SetPending() {
 }
 
 func (p *Process) SetMetadata() error {
+	if strings.Contains(p.Url, "bilibili") {
+		metadata, err := website.GetBilibiliInfo(p.Url, YdpConfig.Cookies.Bilibili)
+		if err != nil {
+			return err
+		}
+
+		info := DownloadInfo{
+			Id:          strconv.FormatInt(metadata.Cr.Data.Cid, 10),
+			URL:         p.Url,
+			Title:       metadata.Cr.Data.Title,
+			Thumbnail:   metadata.Cr.Data.Pic,
+			Resolution:  strconv.Itoa(metadata.Vir.Data.Dash.Video[0].Width),
+			Size:        int64(0),
+			VCodec:      "",
+			ACodec:      "",
+			OriginalURL: p.Url,
+			FileName:    metadata.Cr.Data.Title + ".mp4",
+			CreatedAt:   time.Now(),
+		}
+		p.Info = info
+		p.BiliMeta = metadata
+		p.Progress.Status = StatusPending
+		return nil
+	}
 	//检查ytdlp程序是否存在
 	if !IsYtDlpExist() {
 		return errors.New("tydlp程序不存在,请下载")
@@ -321,8 +403,7 @@ func (p *Process) SetMetadata() error {
 		baseParams = append(baseParams, "--cookies", YdpConfig.BasePath+"/data/yt-dlp/cookies.txt")
 	}
 	params := append(baseParams, p.Params...)
-	fmt.Println(p.Params)
-	fmt.Println(params)
+	gefflog.Info(fmt.Sprintf("执行参数%s", params))
 	cmd := exec.Command(YdpConfig.YtDlpPath, params...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
@@ -358,7 +439,7 @@ func (p *Process) SetMetadata() error {
 	if err := json.NewDecoder(stdout).Decode(&info); err != nil {
 		gefflog.Err(fmt.Sprintf("failed to Decode json : id=%s, url=%s, err=%s", p.getShortId(), p.Url, err.Error()))
 		gefflog.Err(bufferedStderr.String())
-		return err
+		return errors.New(bufferedStderr.String())
 	}
 	gefflog.Info(info)
 	p.Info = info
@@ -372,6 +453,29 @@ func (p *Process) SetMetadata() error {
 	return nil
 }
 
+func (p *Process) SetThumbnail() {
+	ThumbnailPath := YdpConfig.BasePath + "/data/yt-dlp-download/Thumbnail"
+	if !IsDirExists(ThumbnailPath) {
+		err := os.MkdirAll(ThumbnailPath, os.ModePerm)
+		if err != nil {
+			gefflog.Err("mkdir Thumbnail dir err: " + err.Error())
+			return
+		}
+	}
+	resp, err := http.Get(p.Info.Thumbnail)
+	defer resp.Body.Close()
+	if err != nil {
+		gefflog.Err("Get Thumbnail err: " + err.Error())
+		return
+	}
+	file, err := os.OpenFile(filepath.Join(ThumbnailPath, p.Info.Id+".jpg"), os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.ModePerm)
+	defer file.Close()
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		gefflog.Err("Copy Thumbnail err: " + err.Error())
+		return
+	}
+}
 func (p *Process) getShortId() string { return strings.Split(p.Id, "-")[0] }
 
 func buildFilename(o *DownloadOutput) {
@@ -385,19 +489,4 @@ func buildFilename(o *DownloadOutput) {
 		".%(ext)s",
 		1,
 	)
-}
-
-func IsYtDlpExist() bool {
-	_, err := os.Stat(YdpConfig.YtDlpPath)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return err == nil
-}
-func IsFileExist(path string) bool {
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return err == nil
 }

@@ -3,11 +3,11 @@ package bridge
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
+	"galaxy/bridge/website"
 	"galaxy/bridge/ytdlp"
 	"github.com/coder/websocket"
 	"github.com/ge-fei-fan/gefflog"
-	"net"
 	"time"
 )
 
@@ -91,7 +91,8 @@ func (a *App) Ping(domain, id string) FlagResult {
 }
 
 type revMsg struct {
-	Data string `json:"data"`
+	Source string `json:"source"`
+	Data   string `json:"data"`
 }
 
 func nextMessage() {
@@ -99,19 +100,21 @@ func nextMessage() {
 	for {
 		_, b, err := WsC.wsConn.Read(context.Background())
 		if err != nil {
-			gefflog.Err(WsC.id + "获取WS内容报错：" + err.Error())
-			if errors.Is(err, net.ErrClosed) {
-				gefflog.Info("WS连接关闭退出")
-				break
-			}
-			continue
+			//gefflog.Err(WsC.id + "获取WS内容报错：" + err.Error())
+			//if errors.Is(err, net.ErrClosed) {
+			//	gefflog.Info("WS Read err: 关闭退出")
+			//	break
+			//}
+			//continue
+			WsC.wsConn.CloseNow()
+			gefflog.Err("WS Read err 退出: " + err.Error())
 		}
 		err = json.Unmarshal(b, &rm)
 		if err != nil {
 			gefflog.Err("failed to unmarshal JSON: %w", err)
 		}
-		gefflog.Info("WS接收到消息" + rm.Data)
-		url, ok := ytdlp.AppYoutubeCompile(rm.Data)
+		gefflog.Info(fmt.Sprintf("WS接收到消息: %v", rm))
+		url, ok := website.PreprocessApp(rm.Source, rm.Data)
 		if ok {
 			p := &ytdlp.Process{
 				Url:    url,
@@ -120,18 +123,6 @@ func nextMessage() {
 			}
 			ytdlp.YdpConfig.Mdb.Set(p)
 			ytdlp.YdpConfig.Mq.Publish(p)
-			continue
-		}
-		url, ok = ytdlp.AppXCompile(rm.Data)
-		if ok {
-			p := &ytdlp.Process{
-				Url:    url,
-				Params: []string{},
-				Output: ytdlp.DownloadOutput{},
-			}
-			ytdlp.YdpConfig.Mdb.Set(p)
-			ytdlp.YdpConfig.Mq.Publish(p)
-			continue
 		}
 	}
 }

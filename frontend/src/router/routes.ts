@@ -72,7 +72,7 @@ const routes: RouteRecordRaw[] = [
     component: YtdlpView,
     meta: {
       name: '下载',
-      keepAlive:false
+      // keepAlive:false
     }
   },
   {

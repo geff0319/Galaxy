@@ -25,9 +25,7 @@ const handelOpenFileDialog =async ()=>{
 <template>
   <div class="settings">
     <div class="settings-item">
-      <div class="title">
-        配置项
-      </div>
+      <div class="title">配置项</div>
       <div class="input-wrapper">
         <h5 class="label">下载目录: </h5>
         <div class="input-container">
@@ -45,6 +43,13 @@ const handelOpenFileDialog =async ()=>{
         <h5 class="label">并发数量(重启生效): </h5>
         <div class="input-container">
           <a-input-number v-model:value="ytdlpSettingsStore.ytdlpConfig.queueSize" :min="1" :max="10" />
+        </div>
+      </div>
+      <div class="title">Cookie</div>
+      <div class="input-wrapper">
+        <h5 class="label">bilibili: </h5>
+        <div class="input-container">
+          <a-input-password :bordered="false" v-model:value="ytdlpSettingsStore.ytdlpConfig.cookies.bilibili" placeholder="input cookie" />
         </div>
       </div>
       <YtDlp />

@@ -190,14 +190,17 @@ export const useYtdlpStore = defineStore('ytdlp', () => {
     }
 })
 
-
+type YtDlpCookie ={
+    bilibili?:string
+}
 type YtdlpSetting = {
     downloadPath: string
     queueSize:string
+    cookies:YtDlpCookie
 }
 export const useYtdlpSettingsStore = defineStore('ytdlp-settings', () =>{
     let latestYtdlpConfig = ''
-    const ytdlpConfig = ref<YtdlpSetting>({queueSize: "", downloadPath: ""})
+    const ytdlpConfig = ref<YtdlpSetting>({cookies: {bilibili:""}, queueSize: "", downloadPath: ""})
 
     const setupYtdlpSettings = async () => {
         try {

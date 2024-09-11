@@ -3,6 +3,7 @@ package ytdlp
 import (
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"github.com/ge-fei-fan/gefflog"
 	"os"
 	"path/filepath"
@@ -58,13 +59,17 @@ func (m *MemoryDB) All() *[]ProcessResponse {
 	running := []ProcessResponse{}
 
 	m.table.Range(func(key, value any) bool {
+		info := value.(*Process).Info
+		//info.Thumbnail = filepath.Join(YdpConfig.BasePath, "/data/yt-dlp-download/Thumbnail", info.Id+".jpg")
+		//info.Thumbnail = info.Id + ".jpg"
 		running = append(running, ProcessResponse{
 			Id:       key.(string),
 			Url:      value.(*Process).Url,
-			Info:     value.(*Process).Info,
+			Info:     info,
 			Progress: value.(*Process).Progress,
 			Output:   value.(*Process).Output,
 			Params:   value.(*Process).Params,
+			//BiliMeta: value.(*Process).BiliMeta,
 		})
 		return true
 	})
@@ -77,7 +82,7 @@ func (m *MemoryDB) All() *[]ProcessResponse {
 // Persist the database in a single file named "session.dat"
 func (m *MemoryDB) Persist(basePath string) error {
 	running := m.All()
-
+	fmt.Println(running)
 	sf := filepath.Join(basePath, "/data/session.dat")
 
 	fd, err := os.Create(sf)
@@ -87,7 +92,7 @@ func (m *MemoryDB) Persist(basePath string) error {
 
 	session := Session{Processes: *running}
 
-	if err := gob.NewEncoder(fd).Encode(session); err != nil {
+	if err = gob.NewEncoder(fd).Encode(session); err != nil {
 		return errors.Join(errors.New("failed to persist session"), err)
 	}
 	return nil
@@ -95,15 +100,16 @@ func (m *MemoryDB) Persist(basePath string) error {
 
 // Restore a persisted state
 func (m *MemoryDB) Restore(basePath string, mq *MessageQueue) {
+	fmt.Println("读取ytdlp下载内容")
 	fd, err := os.Open(filepath.Join(basePath, "/data/session.dat"))
 	if err != nil {
 		return
 	}
-
+	fmt.Println(fd)
 	var session Session
 
-	if err := gob.NewDecoder(fd).Decode(&session); err != nil {
-		gefflog.Err(err.Error())
+	if err = gob.NewDecoder(fd).Decode(&session); err != nil {
+		gefflog.Err("Decode session error: " + err.Error())
 		return
 	}
 
@@ -115,13 +121,17 @@ func (m *MemoryDB) Restore(basePath string, mq *MessageQueue) {
 			Progress: proc.Progress,
 			Output:   proc.Output,
 			Params:   proc.Params,
+			//BiliMeta: proc.BiliMeta,
 			//Logger:   logger,
 		}
 
 		m.table.Store(proc.Id, restored)
 
+		//if restored.Progress.Status != StatusCompleted {
+		//	mq.Publish(restored)
+		//}
 		if restored.Progress.Status != StatusCompleted {
-			mq.Publish(restored)
+			restored.Progress.Status = StatusErrored
 		}
 	}
 }

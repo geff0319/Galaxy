@@ -236,16 +236,16 @@ export const exitApp = async () => {
       envStore.clearSystemProxy()
     }
   }
-  ytdlpStore.dbPersist()
-  setTimeout(ExitApp, 3_000)
+  ytdlpStore.dbPersist().then(async ()=>{
+      try {
+          await pluginsStore.onShutdownTrigger()
+      } catch (error: any) {
+          window.Plugins.message.error(error)
+      }
 
-  try {
-    await pluginsStore.onShutdownTrigger()
-  } catch (error: any) {
-    window.Plugins.message.error(error)
-  }
+      ExitApp()
+  })
 
-  ExitApp()
 }
 
 export const toggleFullScreen = async () => {

@@ -75,7 +75,7 @@ func (a *App) DownloadYoutube(url string, params []string) FlagResult {
 func (a *App) Persist() FlagResult {
 	err := ytdlp.YdpConfig.Mdb.Persist(Env.BasePath)
 	if err != nil {
-		gefflog.Err("视频信息保存失败")
+		gefflog.Err("视频信息保存失败：" + err.Error())
 		return FlagResult{Flag: false, Data: err.Error()}
 	}
 	return FlagResult{Flag: true, Data: "视频信息保存成功"}

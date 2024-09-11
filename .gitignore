@@ -3,3 +3,4 @@ frontend/dist
 
 .DS_Store
 /bridge/translate_test.go
+/logs/
