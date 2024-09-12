@@ -2,6 +2,7 @@ package ytdlp
 
 import (
 	"os"
+	"regexp"
 )
 
 func IsYtDlpExist() bool {
@@ -28,4 +29,13 @@ func IsDirExists(path string) bool {
 		return true
 	}
 	return false
+}
+
+// 过滤 Windows 不支持的文件名字符
+func sanitizeFileName(name string) string {
+	// 定义一个正则表达式模式来匹配 Windows 不支持的字符
+	re := regexp.MustCompile(`[<>:"/\\|?*]`)
+	// 用下划线替换这些字符
+	sanitized := re.ReplaceAllString(name, "_")
+	return sanitized
 }

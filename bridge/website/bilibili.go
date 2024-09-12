@@ -264,10 +264,15 @@ func (bmd *BiliMetadata) DV() error {
 	req.Header.Set("Referer", "https://www.bilibili.com")
 	resp, err := client.Do(req)
 	if err != nil {
+		gefflog.Err("client request err: " + err.Error())
 		return err
 	}
 	var file *os.File
 	file, err = os.OpenFile(bmd.SavedFilePath+".video", os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		gefflog.Err("OpenFile video err: " + err.Error())
+		return err
+	}
 	defer file.Close()
 	_ = file.Truncate(0)
 	pw := progressWriter{
@@ -284,6 +289,7 @@ func (bmd *BiliMetadata) DV() error {
 	//}()
 	_, err = io.Copy(bmd.pWriter, resp.Body)
 	if err != nil {
+		gefflog.Err("CopyFile video err: " + err.Error())
 		return err
 	}
 	return nil
@@ -297,14 +303,20 @@ func (bmd *BiliMetadata) DA() error {
 	req.Header.Set("Referer", "https://www.bilibili.com")
 	resp, err := client.Do(req)
 	if err != nil {
+		gefflog.Err("client request err: " + err.Error())
 		return err
 	}
 	var file *os.File
 	file, err = os.OpenFile(bmd.SavedFilePath+".audio", os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		gefflog.Err("OpenFile audio err: " + err.Error())
+		return err
+	}
 	defer file.Close()
 	_ = file.Truncate(0)
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
+		gefflog.Err("CopyFile audio err: " + err.Error())
 		return err
 	}
 	return nil
@@ -319,14 +331,17 @@ func (bmd *BiliMetadata) Merge(basePath string) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	err := cmd.Run()
 	if err != nil {
+		gefflog.Err("Merge error: " + err.Error())
 		return errors.New("Merge error: " + err.Error())
 	}
 	err = os.Remove(video)
 	if err != nil {
+		gefflog.Err("Remove video error: " + err.Error())
 		return errors.New(video + "Remove video error: " + err.Error())
 	}
 	err = os.Remove(audio)
 	if err != nil {
+		gefflog.Err("Remove audio error: " + err.Error())
 		return errors.New(audio + "Remove audio error: " + err.Error())
 	}
 	return nil

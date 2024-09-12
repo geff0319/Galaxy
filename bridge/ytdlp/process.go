@@ -87,7 +87,7 @@ func (p *Process) Start() {
 	//go p.SetThumbnail()
 	//TODO: it spawn another one ytdlp process, too slow.
 	//go p.GetFileName(&out)
-	p.Output.SavedFilePath = filepath.Join(YdpConfig.DownloadPath, p.Info.FileName)
+	p.Output.SavedFilePath = filepath.Join(YdpConfig.DownloadPath, sanitizeFileName(p.Info.FileName))
 	// bilibii下载
 	if strings.Contains(p.Url, "bilibili") {
 		if p.BiliMeta == nil {
@@ -95,10 +95,14 @@ func (p *Process) Start() {
 			if err != nil {
 				gefflog.Err(fmt.Sprintf("failed to Download bilibili process: err=%s", err.Error()))
 				YdpConfig.Mq.eventBus.Publish("notify", "error", "下载bilibili视频失败"+err.Error())
+				p.Progress.Status = StatusErrored
 				return
 			}
 		}
-
+		defer func() {
+			p.BiliMeta.DoneChan <- struct{}{}
+			close(p.BiliMeta.DoneChan)
+		}()
 		p.BiliMeta.SavedFilePath = p.Output.SavedFilePath
 		p.BiliMeta.WriteFn = func(percentage string, speed float32) {
 			if percentage == "100" {
@@ -118,17 +122,13 @@ func (p *Process) Start() {
 			}
 		}
 		err := p.BiliMeta.Download(YdpConfig.BasePath)
-		defer func() {
-			p.BiliMeta.DoneChan <- struct{}{}
-			close(p.BiliMeta.DoneChan)
-			p.Complete()
-		}()
 		if err != nil {
 			gefflog.Err(fmt.Sprintf("failed to Download bilibili process: err=%s", err.Error()))
 			YdpConfig.Mq.eventBus.Publish("notify", "error", "下载bilibili视频失败"+err.Error())
+			p.Progress.Status = StatusErrored
 			return
 		}
-
+		p.Complete()
 		return
 	}
 

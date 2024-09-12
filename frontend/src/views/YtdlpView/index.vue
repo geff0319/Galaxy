@@ -49,7 +49,7 @@ const menuList: Menu[] = [
 ]
 const generateMenus = (p: ProcessType) => {
   let builtInMenus: Menu[] = menuList.map((v) => ({ ...v, handler: () => v.handler?.(p.id) }))
-  if (p.progress.process_status == 3) {
+  if (p.progress.process_status != 2) {
     builtInMenus.unshift({
       label: '重试',
       handler: async () => {
@@ -101,21 +101,22 @@ const deleteVideo = async (id: string) => {
   </div>
 
   <div v-else class="grid-list-header">
-    <Radio
-        v-model="appSettingsStore.app.ytdlpView"
-        :options="[
-        { label: 'common.grid', value: View.Grid },
-        { label: 'common.list', value: View.List }
-      ]"
-        class="mr-auto"
-    />
+<!--    <Radio-->
+<!--        v-model="appSettingsStore.app.ytdlpView"-->
+<!--        :options="[-->
+<!--        { label: 'common.grid', value: View.Grid },-->
+<!--        { label: 'common.list', value: View.List }-->
+<!--      ]"-->
+<!--        class="mr-auto"-->
+<!--    />-->
+    <div class="mr-auto"></div>
     <Button @click="handleAddSub" type="primary">
       {{ t('common.add') }}
     </Button>
   </div>
 
   <div :class="'grid-list-' + appSettingsStore.app.ytdlpView">
-    <a-card  size="small" v-for="(p, index) in ytdlpStore.process" hoverable :class="'item'" :body-style="{height:'66px'}" :key="p.id + getTime()" v-menu="generateMenus(p)" >
+    <a-card hoverable class="custom-card" size="small" v-for="(p, index) in ytdlpStore.process" :class="'item'" :body-style="{height:'66px'}" :key="p.id + p.progress.process_status" v-menu="generateMenus(p)" >
       <template v-if="appSettingsStore.app.ytdlpView === View.Grid" #cover>
 <!--        <a-image-->
 <!--            v-if = "p.info.thumbnail.length !== 0 "-->

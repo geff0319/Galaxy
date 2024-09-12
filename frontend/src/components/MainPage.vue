@@ -6,7 +6,7 @@ const route = useRoute();
 
 <template>
   <div class="content">
-    <!-- <RouterView /> -->
+<!--     <RouterView />-->
     <RouterView v-slot="{ Component }">
       <KeepAlive>
         <component v-if="route.meta.keepAlive" :is="Component" />

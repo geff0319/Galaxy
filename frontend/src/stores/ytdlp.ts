@@ -62,7 +62,7 @@ export const formatSpeedMiB = (val: number) =>
 export const formatResolution=(val: string):string=>{
    if(val.includes('4320')){
        return '8K'
-   }else if (val.includes('2160')){
+   }else if (val.includes('2160')||val.includes('3840')){
        return '4K'
    }else if (val.includes('1440')){
        return '2K'
@@ -70,6 +70,8 @@ export const formatResolution=(val: string):string=>{
        return '1080P'
    }else if (val.includes('720')){
        return '720P'
+   }else if (val.includes('480')){
+       return '480P'
    }else {
        return '未知'
    }

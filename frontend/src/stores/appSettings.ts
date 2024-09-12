@@ -61,7 +61,7 @@ export const useAppSettingsStore = defineStore('app-settings', () => {
     rulesetsView: View.Grid,
     pluginsView: View.Grid,
     scheduledtasksView: View.Grid,
-    ytdlpView:View.Grid,
+    ytdlpView:View.List,
     windowStartState: WindowStartState.Normal,
     exitOnClose: true,
     closeKernelOnExit: true,
