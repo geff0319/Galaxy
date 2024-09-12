@@ -59,13 +59,10 @@ func (m *MemoryDB) All() *[]ProcessResponse {
 	running := []ProcessResponse{}
 
 	m.table.Range(func(key, value any) bool {
-		info := value.(*Process).Info
-		//info.Thumbnail = filepath.Join(YdpConfig.BasePath, "/data/yt-dlp-download/Thumbnail", info.Id+".jpg")
-		//info.Thumbnail = info.Id + ".jpg"
 		running = append(running, ProcessResponse{
 			Id:       key.(string),
 			Url:      value.(*Process).Url,
-			Info:     info,
+			Info:     value.(*Process).Info,
 			Progress: value.(*Process).Progress,
 			Output:   value.(*Process).Output,
 			Params:   value.(*Process).Params,
@@ -74,7 +71,7 @@ func (m *MemoryDB) All() *[]ProcessResponse {
 		return true
 	})
 	sort.Slice(running, func(i, j int) bool {
-		return running[i].Info.CreatedAt.Before(running[j].Info.CreatedAt)
+		return running[i].Info.CreatedAt.After(running[j].Info.CreatedAt)
 	})
 	return &running
 }

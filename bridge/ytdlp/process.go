@@ -373,7 +373,7 @@ func (p *Process) SetMetadata() error {
 			URL:         p.Url,
 			Title:       metadata.Cr.Data.Title,
 			Thumbnail:   metadata.Cr.Data.Pic,
-			Resolution:  strconv.Itoa(metadata.Vir.Data.Dash.Video[0].Width),
+			Resolution:  strconv.Itoa(metadata.Vir.Data.Dash.Video[0].Height),
 			Size:        int64(0),
 			VCodec:      "",
 			ACodec:      "",

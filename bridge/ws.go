@@ -108,6 +108,7 @@ func nextMessage() {
 			//continue
 			WsC.wsConn.CloseNow()
 			gefflog.Err("WS Read err 退出: " + err.Error())
+			return
 		}
 		err = json.Unmarshal(b, &rm)
 		if err != nil {

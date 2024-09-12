@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { FolderOpenOutlined } from '@ant-design/icons-vue';
 import {ref} from "vue";
-import { OpenDirectoryDialog } from '@/bridge'
+import {BrowserOpenURL, OpenDirectoryDialog} from '@/bridge'
 import {useYtdlpSettingsStore} from "@/stores";
 import {message} from "ant-design-vue";
 import YtDlp from "@/views/KernelView/YtDlp.vue";
@@ -20,6 +20,9 @@ const handelOpenFileDialog =async ()=>{
     message.error("选择文件夹失败")
   }
 }
+const handelOpenDirDialog =()=>{
+  BrowserOpenURL(ytdlpSettingsStore.ytdlpConfig.downloadPath)
+}
 </script>
 
 <template>
@@ -32,11 +35,16 @@ const handelOpenFileDialog =async ()=>{
           <a-tooltip :title="ytdlpSettingsStore.ytdlpConfig.downloadPath">
             <a-input style="margin-right: 10px"  disabled v-model:value="ytdlpSettingsStore.ytdlpConfig.downloadPath" placeholder="请选择视频下载目录" />
           </a-tooltip>
-          <a-button style="width: 40px" type="primary" size="middle" @click="handelOpenFileDialog">
-            <template #icon>
-              <FolderOpenOutlined />
-            </template>
-          </a-button>
+<!--          <a-button style="width: 40px" type="primary" size="middle" @click="handelOpenFileDialog">-->
+<!--            <template #icon>-->
+<!--              <FolderOpenOutlined />-->
+<!--            </template>-->
+<!--          </a-button>-->
+          <div style="display: flex;" >
+            <a-button type="link" block @click="handelOpenFileDialog">选择目录</a-button>
+            <a-button type="link" block @click="handelOpenDirDialog">打开</a-button>
+          </div>
+
         </div>
       </div>
       <div class="input-wrapper">
