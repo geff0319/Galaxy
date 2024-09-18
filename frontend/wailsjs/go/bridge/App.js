@@ -14,6 +14,10 @@ export function All() {
   return window['go']['bridge']['App']['All']();
 }
 
+export function CheckBiliLogin() {
+  return window['go']['bridge']['App']['CheckBiliLogin']();
+}
+
 export function ConnectWs(arg1, arg2) {
   return window['go']['bridge']['App']['ConnectWs'](arg1, arg2);
 }

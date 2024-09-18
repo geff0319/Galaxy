@@ -1,6 +1,5 @@
 package website
 
-import "C"
 import (
 	"context"
 	"encoding/json"
@@ -71,6 +70,16 @@ type BiliMetadata struct {
 	Vir           VideoInfoResponse
 	WriteFn       func(string, float32) `json:"-"`
 	pWriter       *progressWriter
+}
+type WebInterfaceNav struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		IsLogin bool   `json:"isLogin"`
+		Uname   string `json:"uname"`
+		Face    string `json:"face"`
+		Mid     int    `json:"mid"`
+	} `json:"data"`
 }
 
 func NewBlibili(url string) *Bilibili {
@@ -144,6 +153,7 @@ func getCid(bv string) ([]byte, error) {
 	//log.Println(string(body))
 	return body, nil
 }
+
 func getStream(bv, ck string, cid int64) (*VideoInfoResponse, error) {
 	url := fmt.Sprintf("https://api.bilibili.com/x/player/wbi/playurl?fnver=0&fnval=3216&fourk=1&qn=127&bvid=%s&cid=%d", bv, cid)
 	fmt.Println(url)
@@ -214,6 +224,42 @@ func GetBilibiliInfo(url, ck string) (*BiliMetadata, error) {
 	return &md, nil
 }
 
+func CheckLogin(ck string) (bool, error) {
+	navUrl := "https://api.bilibili.com/x/web-interface/nav"
+	navUrl, err := sign(navUrl)
+	req, err := http.NewRequest(http.MethodGet, navUrl, nil)
+	if err != nil {
+		gefflog.Err("CheckLogin NewRequest err: " + err.Error())
+		return false, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0")
+	req.Header.Set("Referer", "https://www.bilibili.com/")
+	if ck != "" {
+		req.AddCookie(&http.Cookie{Name: "SESSDATA", Value: ck})
+	}
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		gefflog.Err("CheckLogin Request err: %s" + err.Error())
+		return false, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		gefflog.Err("CheckLogin ReadAll err: %s" + err.Error())
+		return false, err
+	}
+	var win WebInterfaceNav
+	err = json.Unmarshal(body, &win)
+	if err != nil {
+		gefflog.Err("CheckLogin json Unmarshal err: %s" + err.Error())
+		return false, err
+	}
+	if win.Code != 0 {
+		return false, errors.New(win.Message)
+	}
+	return win.Data.IsLogin, nil
+}
+
 func (bmd *BiliMetadata) Download(basePath string) error {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
@@ -255,6 +301,7 @@ func (bmd *BiliMetadata) speed() {
 		}
 	}
 }
+
 func (bmd *BiliMetadata) DV() error {
 
 	req, err := http.NewRequestWithContext(bmd.ctx, http.MethodGet, bmd.Vir.Data.Dash.Video[0].BaseUrl, nil)

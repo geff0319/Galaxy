@@ -14,7 +14,7 @@ const appStore = Stores.useAppStore()
 const closeWidgets =async () => {
   appStore.widgetsEnable = false
   appStore.widgetsType = ''
-  await WindowSetSize(800, 540)
+  await WindowSetSize(1000, 640)
   WindowSetPosition(650,250)
   WindowSetAlwaysOnTop(false)
   await ShowToolWindow()

@@ -27,8 +27,8 @@ func main() {
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  bridge.AppTitle,
-		Width:  800,
-		Height: 540,
+		Width:  1000,
+		Height: 640,
 		//MinWidth:      50,
 		//MinHeight:     50,
 		Debug:         options.Debug{true},

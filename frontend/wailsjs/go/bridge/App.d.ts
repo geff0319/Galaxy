@@ -9,6 +9,8 @@ export function AddScheduledTask(arg1:string,arg2:string):Promise<bridge.FlagRes
 
 export function All():Promise<bridge.FlagResultWithData>;
 
+export function CheckBiliLogin():Promise<bridge.FlagResult>;
+
 export function ConnectWs(arg1:string,arg2:string):Promise<bridge.FlagResult>;
 
 export function Delete(arg1:string):Promise<bridge.FlagResult>;

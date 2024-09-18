@@ -56,3 +56,10 @@ export const deleteProcess = async (id:string) => {
     }
     return data
 }
+export const AppCheckBiliLogin = async () => {
+    const { flag,data } = await App.CheckBiliLogin()
+    if (!flag) {
+        throw data
+    }
+    return data
+}

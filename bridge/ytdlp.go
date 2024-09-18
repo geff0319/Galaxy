@@ -3,6 +3,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
+	"galaxy/bridge/website"
 	"galaxy/bridge/ytdlp"
 	"github.com/ge-fei-fan/gefflog"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -133,4 +134,16 @@ func MqNotifyConsumer(a *App) {
 	if err != nil {
 		gefflog.Err(err.Error())
 	}
+}
+
+func (a *App) CheckBiliLogin() FlagResult {
+	ok, err := website.CheckLogin(ytdlp.YdpConfig.Cookies.Bilibili)
+	if err != nil {
+		return FlagResult{false, err.Error()}
+	}
+	if !ok {
+		return FlagResult{false, "账号未登录"}
+	}
+	return FlagResult{true, "账号已登录"}
+
 }

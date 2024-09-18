@@ -64,7 +64,7 @@ const menus: Menu[] = [
     label: 'titlebar.resetSize',
     handler: async () => {
       WindowUnfullscreen()
-      await WindowSetSize(800, 540)
+      await WindowSetSize(1000, 640)
       WindowCenter()
       isFullScreen.value = false
     }

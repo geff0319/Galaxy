@@ -103,14 +103,17 @@ export const useYtdlpStore = defineStore('ytdlp', () => {
     const videoUrl = ref<string>("")
     const downloadUrl = ref<string>("")
     const youtubeRegex = /^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    const bilibiliRegex = /https:\/\/www\.bilibili\.com\/video\/BV\w+/g;
     const parseing = ref<boolean>(false)
     const determineUrl = (url:string) =>{
-        if(!youtubeRegex.test(url)){
-            // videoUrl.value=""
-            downloadUrl.value=""
+        if(youtubeRegex.test(url)){
+            getBaseUrl(url)
             return
+        }else if (bilibiliRegex.test(url)){
+            downloadUrl.value=url;
+            return;
         }
-        getBaseUrl(url)
+        downloadUrl.value=""
     }
 
     const getBaseUrl = (url:string) =>{

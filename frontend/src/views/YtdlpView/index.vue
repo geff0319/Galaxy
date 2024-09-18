@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onUnmounted, ref,watch} from 'vue'
 import { useI18n, I18nT } from 'vue-i18n'
-
+import { UserOutlined } from '@ant-design/icons-vue';
 import { View } from '@/constant'
 import {
   formatResolution,
@@ -11,7 +11,7 @@ import {
 } from '@/stores'
 import {setIntervalImmediately} from "@/utils";
 import YtdlpForm from "@/views/YtdlpView/components/YtdlpForm.vue";
-import {deleteProcess} from "@/bridge/ytdlp";
+import {AppCheckBiliLogin, deleteProcess} from "@/bridge/ytdlp";
 import {message} from "ant-design-vue";
 import router from "@/router";
 
@@ -26,8 +26,14 @@ const timer = setIntervalImmediately(ytdlpStore.getAllVideoInfo, 1000)
 const handleAddSub = async () => {
   showForm.value = true
 }
-const getTime = () =>{
-  return new Date().getTime()
+const check = async () =>{
+  try {
+    const data = await AppCheckBiliLogin()
+    message.info(data)
+  }catch (err:any){
+    message.error(err)
+  }
+
 }
 onUnmounted(() => {
   clearInterval(timer)
@@ -49,7 +55,7 @@ const menuList: Menu[] = [
 ]
 const generateMenus = (p: ProcessType) => {
   let builtInMenus: Menu[] = menuList.map((v) => ({ ...v, handler: () => v.handler?.(p.id) }))
-  if (p.progress.process_status != 2) {
+  if (p.progress.process_status == 3) {
     builtInMenus.unshift({
       label: '重试',
       handler: async () => {
@@ -109,7 +115,17 @@ const deleteVideo = async (id: string) => {
 <!--      ]"-->
 <!--        class="mr-auto"-->
 <!--    />-->
-    <div class="mr-auto"></div>
+
+    <div class="mr-auto">
+<!--      <a-card style="width: 100px" size="small">-->
+<!--        <a-avatar>-->
+<!--          <template #icon><UserOutlined /></template>-->
+<!--        </a-avatar>-->
+<!--      </a-card>-->
+      <Button @click="check" type="primary">
+        校验登录状态
+      </Button>
+    </div>
     <Button @click="handleAddSub" type="primary">
       {{ t('common.add') }}
     </Button>
