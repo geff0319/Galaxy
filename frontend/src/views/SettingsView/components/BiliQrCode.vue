@@ -85,7 +85,6 @@ const checkLoginStatus = async (key: string)=>{
       return
     }
     await sleep(1000)
-    console.log("扫码循环")
   }
 }
 const init = async ()=>{
