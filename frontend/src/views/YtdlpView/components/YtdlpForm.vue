@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {useYtdlpStore} from "@/stores";
+import {type Menu, useYtdlpStore} from "@/stores";
 import {inject, ref} from "vue";
 import {message} from "ant-design-vue";
+import { ClipboardGetText } from '@wails/runtime/runtime';
 const handleCancel = inject('cancel') as any
 
 
@@ -14,6 +15,7 @@ const handleSave = async () => {
     if(ytdlpStore.downloadUrl.length===0){
       message.error("未解析有效链接")
       handleCancel()
+      return
     }
     await ytdlpStore.downloadYoutube(false,false)
     handleCancel()
@@ -21,16 +23,19 @@ const handleSave = async () => {
     message.error("添加任务失败"+error)
   }
 }
-
+const init = async ()=>{
+  val.value = await ClipboardGetText()
+}
+init()
 </script>
 
-<template>
+<template >
   <div class="header" style="--wails-draggable: drag">
     <div class="header-title">添加任务</div>
   </div>
 
   <div class="form">
-    <div class="form-item">
+    <div class="form-item" >
       <div class="name">链接 *</div>
       <Input v-model="val" auto-size autofocus class="flex-1 ml-8" />
     </div>

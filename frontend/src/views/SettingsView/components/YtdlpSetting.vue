@@ -5,9 +5,9 @@ import {BrowserOpenURL, OpenDirectoryDialog} from '@/bridge'
 import {useYtdlpSettingsStore} from "@/stores";
 import {message} from "ant-design-vue";
 import YtDlp from "@/views/KernelView/YtDlp.vue";
-import Ffmpeg from "@/views/KernelView/Ffmpeg.vue";
+import BiliQrCode from "@/views/SettingsView/components/BiliQrCode.vue";
 
-
+const showForm = ref(false)
 const ytdlpSettingsStore = useYtdlpSettingsStore()
 // const numVal = ref<string>(ytdlpSettingsStore.ytdlpConfig.queueSize)
 const handelOpenFileDialog =async ()=>{
@@ -19,6 +19,9 @@ const handelOpenFileDialog =async ()=>{
   }catch (error :any){
     message.error("选择文件夹失败")
   }
+}
+const biliQrOpen = ()=>{
+  showForm.value = true
 }
 const handelOpenDirDialog =()=>{
   BrowserOpenURL(ytdlpSettingsStore.ytdlpConfig.downloadPath)
@@ -57,12 +60,16 @@ const handelOpenDirDialog =()=>{
       <div class="input-wrapper">
         <h5 class="label">bilibili: </h5>
         <div class="input-container">
-          <a-input-password :bordered="false" v-model:value="ytdlpSettingsStore.ytdlpConfig.cookies.bilibili" placeholder="input cookie" />
+          <a-input-password style="width:400px;" :bordered="false" v-model:value="ytdlpSettingsStore.ytdlpConfig.cookies.bilibili" placeholder="input cookie" />
+          <a-button style="text-align: left;" type="link" block @click="biliQrOpen">点击扫码登录</a-button>
         </div>
       </div>
       <YtDlp />
     </div>
   </div>
+  <Modal v-model:open="showForm" max-height="80" :footer="false">
+    <BiliQrCode />
+  </Modal>
 </template>
 
 <style lang="less" scoped>

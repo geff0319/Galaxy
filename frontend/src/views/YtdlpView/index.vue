@@ -14,11 +14,13 @@ import YtdlpForm from "@/views/YtdlpView/components/YtdlpForm.vue";
 import {AppCheckBiliLogin, deleteProcess} from "@/bridge/ytdlp";
 import {message} from "ant-design-vue";
 import router from "@/router";
+import {ClipboardGetText} from "@wails/runtime";
 
 const { t } = useI18n()
 const appSettingsStore = useAppSettingsStore()
 const ytdlpStore = useYtdlpStore()
 const showForm = ref(false)
+const loginLoad =ref(false)
 
 ytdlpStore.getAllVideoInfo()
 const timer = setIntervalImmediately(ytdlpStore.getAllVideoInfo, 1000)
@@ -27,11 +29,14 @@ const handleAddSub = async () => {
   showForm.value = true
 }
 const check = async () =>{
+  loginLoad.value = true
   try {
     const data = await AppCheckBiliLogin()
     message.info(data)
+    loginLoad.value = false
   }catch (err:any){
     message.error(err)
+    loginLoad.value = false
   }
 
 }
@@ -122,7 +127,7 @@ const deleteVideo = async (id: string) => {
 <!--          <template #icon><UserOutlined /></template>-->
 <!--        </a-avatar>-->
 <!--      </a-card>-->
-      <Button @click="check" type="primary">
+      <Button :disable="loginLoad" @click="check" type="primary">
         校验登录状态
       </Button>
     </div>
