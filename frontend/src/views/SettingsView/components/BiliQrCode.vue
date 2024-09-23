@@ -82,9 +82,10 @@ const checkLoginStatus = async (key: string)=>{
       handleCancel()
       return
     }else if(statusCode.value === 86038){
-      c
+      return
     }
     await sleep(1000)
+    console.log("扫码循环")
   }
 }
 const init = async ()=>{
